@@ -9,7 +9,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.sudokusolver</groupId>
-    <artifactId>sudokuService</artifactId>
+    <artifactId>SudokuService</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>sudokuService</name>
     <description>sudokuService</description>
@@ -25,6 +25,10 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-web</artifactId>
             <version>6.0.11</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>

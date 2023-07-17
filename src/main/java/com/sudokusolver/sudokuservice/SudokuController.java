@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 @Controller
 public class SudokuController {
 
-    @PostMapping
+    @PostMapping("/solve")
     int[][] solveSudoku(@RequestBody SudokuRequestDto req){
         SolverService service = new SolverService(req.matrix());
         return service.execute();
