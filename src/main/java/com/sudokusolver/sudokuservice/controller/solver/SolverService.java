@@ -1,10 +1,15 @@
-package com.sudokusolver.sudokuservice.solver;
+package com.sudokusolver.sudokuservice.controller.solver;
+
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Scanner;
+import java.util.List;
 
 public class SolverService {
-    private enum Status{
+    public Status getStatus() {
+        return currentStatus;
+    }
+
+    public enum Status{
         PRIME_NUMBER_CONVERSION,
         CALCULATING,
         UPDATING_BOARD,
@@ -47,7 +52,7 @@ public class SolverService {
     }
 
     /**
-     * state machine for the sudokuSolver
+     * state machine for the SolverService
      */
     public void run(){
         switch(currentStatus){
@@ -159,7 +164,6 @@ public class SolverService {
         final int[][] initalBoard = new int[9][9];
         try
         {
-            parseInput(initalBoard);
             final SolverService sodsolv = new SolverService(copyMatrix(initalBoard));
             while(sodsolv.running){
                 sodsolv.run();
@@ -185,27 +189,12 @@ public class SolverService {
         }
     }
 
-    private static void parseInput(final int[][] board) {
-        final Scanner scan;
-        scan = new Scanner(System.in);
-        int row = 0;
-        int column;
-        while (scan.hasNextLine()){
-            if(row==9) {
-                break;
-            }
-            for(column = 0; column < 9;column++){
-                board[row][column] = scan.nextInt();
-            }
-            row++;
-        }
-    }
-
     /**
      * Recursive method that tries to solve a sudoku using match and compare and then
      * guesses the inputs recursively (using the slots with the least alternatives) checks all to see if
      * there are multiple solutions.
-     * @param solverService new sudokusolver with updated board.
+     * @param solverService new solverService with updated board.
+     * @return true if solved
      */
     private static void executeHelper(SolverService solverService){
         System.out.println("NEW ITERATION");
@@ -214,7 +203,7 @@ public class SolverService {
             solverService.run();
         }
         if(solverService.currentStatus == Status.CHANCING){
-            final int[] indexWithLeastOptions = Util.findLeastAmountOfSLotOptions(solverService.availableOptions);
+            final int[] indexWithLeastOptions = Util.findSlotWithLeastOptions(solverService.availableOptions);
             for(int i = 0; i < solverService.availableOptions[indexWithLeastOptions[0]][indexWithLeastOptions[1]]; i++){
 
                 if(solverService.multipleAnswers){
@@ -288,7 +277,7 @@ public class SolverService {
         columnPrimes = Util.reduce(fullBoardValue/productColumn[column]);
         rowPrimes = Util.reduce(fullBoardValue/productRow[row]);
         quadrantPrimes = matchNumbersQuadrant(row,column);
-        final ArrayList<Integer> sameVal = matchNumbersHelper(rowPrimes, columnPrimes, quadrantPrimes);
+        final List<Integer> sameVal = matchNumbersHelper(rowPrimes, columnPrimes, quadrantPrimes);
         if(index == -1){
             stillWorkToDo = true;
             availableOptions[row][column] = sameVal.size();
@@ -344,10 +333,10 @@ public class SolverService {
 
     private int compare(int row, int column, int index){
 
-        ArrayList<Integer> available = matchNumbersQuadrant(row, column);
+        List<Integer> available = matchNumbersQuadrant(row, column);
         available = Util.compareHelper(available, Util.reduce(fullBoardValue/productColumn[column]));
         available = Util.compareHelper(available, Util.reduce(fullBoardValue/productRow[row]));
-        available = exclude(row,column,available);
+        available = excluder(row,column,available);
 
         if(index == -1) {
             if (available.size() == 1) {
@@ -367,14 +356,14 @@ public class SolverService {
      * @param available
      * @return
      */
-    private ArrayList<Integer> exclude(int row, int column, ArrayList<Integer> available){
+    private List<Integer> excluder(int row, int column, List<Integer> available){
         final int rows = Util.relevantData(row);
         final int columns = Util.relevantData(column  );
         for(int x = rows-3; x < rows; x++){
             for(int y = columns-3; y < columns; y++){
                 if(board[x][y] == 1){
                     if(x != row || y != column){
-                        available = Util.compareHelper(available, match(x,y));
+                        available = Util.compareHelper(available, matcher(x,y));
                     }
                 }
 
@@ -389,7 +378,7 @@ public class SolverService {
      * @param column
      * @return Array with the unavailable inputs for nearby slots
      */
-    private ArrayList<Integer> match(int row, int column){
+    private ArrayList<Integer> matcher(int row, int column){
         final ArrayList<Integer> filled = Util.reduce(productRow[row]);
         filled.addAll(Util.reduce(productColumn[column]));
         return filled;
@@ -405,8 +394,8 @@ public class SolverService {
      * @param quadrant
      * @return  the only number available for the slot which then updates the board
      */
-    private ArrayList<Integer> matchNumbersHelper(ArrayList<Integer> row, ArrayList<Integer> column, ArrayList<Integer> quadrant){
-        ArrayList<Integer> sameVal;
+    private List<Integer> matchNumbersHelper(List<Integer> row, List<Integer> column, List<Integer> quadrant){
+        List<Integer> sameVal;
 
         sameVal =  Util.compareHelper(row, column);
         sameVal = Util.compareHelper(sameVal, quadrant);
@@ -454,7 +443,7 @@ public class SolverService {
             }
         }
 
-        //OBS I know this looks really messy but I feel like 9 for loops is even messier...
+        //OBS I know this looks really messy, but I feel like 9 for loops is even messier...
         //efficiency wise it is about as heavy as the double loop above.
         for(int i = 0; i < 3; i++){
             final int addX = i*3;

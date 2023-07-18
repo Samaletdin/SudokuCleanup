@@ -1,8 +1,7 @@
-package com.sudokusolver.sudokuservice.solver;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.Scanner;
+package com.sudokusolver.sudokuservice.controller.solver;
+import java.util.*;
+import java.util.stream.Collectors;
+
 public final class Util{
 
 
@@ -15,75 +14,41 @@ public final class Util{
      * @param array2
      * @return Array containing the values array1 & array2 has in common
      */
-    public static ArrayList<Integer> compareHelper(Iterable<Integer> array1, Iterable<Integer> array2){
-        final ArrayList<Integer> same = new ArrayList<>();
-        for(int int1 : array1){
-            for(int int2 : array2){
-                if(int1 == int2){
-                    same.add(int1);
-                }
-            }
-        }
-
-        return removeDuplicate(same);
+    public static List<Integer> compareHelper(List<Integer> array1, List<Integer> array2){
+        return array1.stream().filter(array2::contains).collect(Collectors.toList());
     }
 
     /**
      * fills a matrix with given value
-     * @param matrix
-     * @param value
-     * @return
+     * @param matrix - the board
+     * @param value - usually initial value to set board
+     * @return - filled board
      */
     public static int[][] fillMatrix(int[][] matrix, int value){
-        for(int i = 0; i < matrix.length; i++){
-            for(int j = 0; j < matrix[0].length; j++){
-                matrix[i][j] = value;
-            }
+        for (int[] ints : matrix) {
+            Arrays.fill(ints, value);
         }
         return matrix;
     }
 
     /**
      * finds the index of a minimum value in a matrix
-     * @param matrix
-     * @return
+     * @param availableOptionsMatrix - matrix containing the possible options per index corresponding to the sudoku board
+     * @return first index where we have the least amount of options to guess what number should be there
      */
-    public static int[] findLeastAmountOfSLotOptions(int[][] matrix){
-        int minVal = matrix[0][0];
-        int[] retVal = {0,0};
-        for(int i = 0; i < matrix.length; i++){
-            for(int j = 0; j < matrix[0].length; j++){
-                if(matrix[i][j] < minVal && matrix[i][j] != 1){
-                    retVal = new int[]{i,j};
-                    minVal = matrix[i][j];
+    public static int[] findSlotWithLeastOptions(int[][] availableOptionsMatrix){
+        int minVal = availableOptionsMatrix[0][0];
+        int[] indexWithLeastOptions = {0,0};
+        for(int i = 0; i < availableOptionsMatrix.length; i++){
+            for(int j = 0; j < availableOptionsMatrix[0].length; j++){
+                if(availableOptionsMatrix[i][j] < minVal && availableOptionsMatrix[i][j] != 1){
+                    indexWithLeastOptions = new int[]{i,j};
+                    minVal = availableOptionsMatrix[i][j];
                 }
             }
         }
-        return retVal;
+        return indexWithLeastOptions;
     }
-
-    /**
-     * removes the duplicate values in an array
-     * @param list
-     * @return
-     */
-    private static ArrayList<Integer> removeDuplicate(ArrayList<Integer> list){
-        int i = 0;
-        int j;
-        while(i < list.size()){
-            j = i+1;
-            while(j < list.size()){
-                if(Objects.equals(list.get(i), list.get(j))){
-                    list.remove(j);
-                    j--;
-                }
-                j++;
-            }
-            i++;
-        }
-        return list;
-    }
-
 
     public static int convertToPrime(int number){
         return switch (number) {

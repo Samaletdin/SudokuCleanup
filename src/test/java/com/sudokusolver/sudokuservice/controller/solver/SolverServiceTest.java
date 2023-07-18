@@ -1,8 +1,6 @@
-package com.sudokusolver.sudokuservice.solver;
+package com.sudokusolver.sudokuservice.controller.solver;
 
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class SolverServiceTest {
 
