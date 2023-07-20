@@ -1,20 +1,17 @@
 package com.sudokusolver.sudokuservice.controller.solver;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Scanner;
 
 public class SolverService {
-    public Status getStatus() {
-        return currentStatus;
-    }
 
     public enum Status{
         PRIME_NUMBER_CONVERSION,
         CALCULATING,
         UPDATING_BOARD,
         COMPARING,
-        CHANCING,
+        GUESSING,
         COMPLETED,
         NORMALISING_NUMBERS,
         MULTIPLE_ANSWERS,
@@ -33,11 +30,13 @@ public class SolverService {
     private boolean noSolution;
     private boolean running;
     private static boolean completedOnce = false;
-    private static boolean multipleAnswers = false;
+    private boolean multipleAnswers = false;
+
+    private static final int TIMEOUT_IN_MILLIS = 10000;
 
     private final int fullBoardValue = 2*3*5*7*11*13*17*19*23;
 
-    private static Status currentStatus;
+    private Status currentStatus;
 
     public SolverService(int[][] matrix){
         board = matrix;
@@ -55,70 +54,60 @@ public class SolverService {
      * state machine for the SolverService
      */
     public void run(){
-        switch(currentStatus){
-            case PRIME_NUMBER_CONVERSION:
+        switch (currentStatus) {
+            case PRIME_NUMBER_CONVERSION -> {
                 convertNumbers();
                 currentStatus = Status.CALCULATING;
-                break;
-
-            case CALCULATING:
+            }
+            case CALCULATING -> {
                 calculateCurrent();
                 currentStatus = Status.UPDATING_BOARD;
-                break;
-
-            case UPDATING_BOARD:
+            }
+            case UPDATING_BOARD -> {
                 hasUpdatedThisIteration = false;
                 updateBoard();
-                if(!stillWorkToDo){
+                if (!stillWorkToDo) {
                     currentStatus = Status.NORMALISING_NUMBERS;
-                }else if(!hasUpdatedThisIteration){
+                } else if (!hasUpdatedThisIteration) {
                     currentStatus = Status.COMPARING;
-                }else {
+                } else {
                     currentStatus = Status.CALCULATING;
                 }
-                if(noSolution){
+                if (noSolution) {
                     currentStatus = Status.ERROR;
                 }
-                break;
-
-            case COMPARING:
+            }
+            case COMPARING -> {
                 compareBoard();
-                if(hasUpdatedThisIteration){
+                if (hasUpdatedThisIteration) {
                     currentStatus = Status.CALCULATING;
-                }else{
-                    currentStatus = Status.CHANCING;
+                } else {
+                    currentStatus = Status.GUESSING;
                 }
-                break;
-
-            case CHANCING:
-                running = false;
-                break;
-
-            case NORMALISING_NUMBERS:
+            }
+            case GUESSING -> running = false;
+            case NORMALISING_NUMBERS -> {
                 convertNumbersBack();
                 currentStatus = Status.COMPLETED;
-                break;
-
-            case COMPLETED:
+            }
+            case COMPLETED -> {
                 System.out.println("SUCCESS!");
-                if(completedOnce){
+                if (completedOnce) {
                     currentStatus = Status.MULTIPLE_ANSWERS;
                     break;
                 }
                 handleSuccessCase();
                 running = false;
-                break;
-
-            case MULTIPLE_ANSWERS:
+            }
+            case MULTIPLE_ANSWERS -> {
                 System.out.println("Non-unique");
                 multipleAnswers = true;
                 running = false;
-                return;
-
-            case ERROR:
+            }
+            case ERROR -> {
                 System.out.println("Find another job");
                 running = false;
-                return;
+            }
         }
     }
 
@@ -127,20 +116,20 @@ public class SolverService {
      * @param board 9*9 matrix with sudoku
      * @return 9*9 matrix with solved sudoku or empty if no solution available.
      */
-    public int[][] execute(int[][] board){
+    public static int[][] execute(int[][] board){
         final SolverService solverService = new SolverService(copyMatrix(board));
-        resetStaticVariables();
+        solverService.resetStaticVariables();
         while(solverService.running){
             solverService.run();
         }
 
         handeSpecialIteration(solverService);
 
-        if(multipleAnswers) {
-            currentStatus = Status.MULTIPLE_ANSWERS;
+        if(solverService.multipleAnswers) {
+            solverService.currentStatus = Status.MULTIPLE_ANSWERS;
             return board;
-        } else if (completedOnce) {
-            currentStatus = Status.COMPLETED;
+        } else if (solverService.completedOnce) {
+            solverService.currentStatus = Status.COMPLETED;
             printFinalSolution();
             return possibleSolution.clone();
         } else {
@@ -154,31 +143,6 @@ public class SolverService {
         noSolution = false;
         multipleAnswers = false;
         completedOnce = false;
-    }
-
-    /**
-     * Reads a sudoku as string input and solves
-     * @return 9*9 matrix with solved sudoku.
-     */
-    public int[][] execute(){
-        final int[][] initalBoard = new int[9][9];
-        try
-        {
-            final SolverService sodsolv = new SolverService(copyMatrix(initalBoard));
-            while(sodsolv.running){
-                sodsolv.run();
-            }
-            handeSpecialIteration(sodsolv);
-        }catch (RuntimeException e){
-            e.printStackTrace();
-        }
-        if (!multipleAnswers && completedOnce) {
-            printFinalSolution();
-            return possibleSolution;
-        } else {
-            return initalBoard;
-        }
-
     }
 
     private static void handeSpecialIteration(final SolverService sodsolv) {
@@ -202,35 +166,37 @@ public class SolverService {
         while(solverService.running){
             solverService.run();
         }
-        if(solverService.currentStatus == Status.CHANCING){
+        if(solverService.currentStatus == Status.GUESSING){
             final int[] indexWithLeastOptions = Util.findSlotWithLeastOptions(solverService.availableOptions);
-            for(int i = 0; i < solverService.availableOptions[indexWithLeastOptions[0]][indexWithLeastOptions[1]]; i++){
+            int row = indexWithLeastOptions[0];
+            int column = indexWithLeastOptions[1];
+
+            for(int i = 0; i < solverService.availableOptions[row][column]; i++){
 
                 if(solverService.multipleAnswers){
                     break;
                 }
-                solverService.updateSingle(indexWithLeastOptions[0], indexWithLeastOptions[1], i);
+                solverService.updateSingle(row, column, i);
                 executeHelper(new SolverService(copyMatrix(solverService.board)));
             }
         }
     }
 
     private static int[][] copyMatrix(final int[][] initialBoard) {
-        final int[][] tempB = new int[9][];
-        for (int j = 0; j < 9; j++) {
-            tempB[j] = Arrays.copyOf(initialBoard[j], initialBoard[j].length);
+        final int[][] arrayCopy = new int[9][];
+        for (int i = 0; i < 9; i++) {
+            arrayCopy[i] = Arrays.copyOf(initialBoard[i], initialBoard[i].length);
         }
-        return tempB;
+        return arrayCopy;
     }
 
     private void savePossibleSolution() {
-        for (int j = 0; j < 9; j++) {
-            possibleSolution[j] = Arrays.copyOf(board[j], board[j].length);
+        for (int i = 0; i < 9; i++) {
+            possibleSolution[i] = Arrays.copyOf(board[i], board[i].length);
         }
     }
 
     private void handleSuccessCase() {
-        System.out.println("SUCCESS!");
         savePossibleSolution();
         boardPrinter();
         completedOnce = true;
@@ -259,41 +225,35 @@ public class SolverService {
         }
     }
 
+
     /**
      * General update method, checks corresponding row, column and quadrant to
      * see if there is only one feasible answer to put in and updates the board.
      * @param row
      * @param column
+     * @param index
      */
-    private void updateSingle(int row, int column){
-        updateSingle(row, column, -1);
-    }
-
     private void updateSingle(int row, int column, int index){
-        final ArrayList<Integer> rowPrimes;
-        final ArrayList<Integer> columnPrimes;
-        final ArrayList<Integer> quadrantPrimes;
+        final List<Integer> rowPrimes = Util.primeNumberFactorize(fullBoardValue/productRow[row]);
+        final List<Integer> columnPrimes = Util.primeNumberFactorize(fullBoardValue/productColumn[column]);
+        final List<Integer> quadrantPrimes = matchNumbersQuadrant(row,column);
 
-        columnPrimes = Util.reduce(fullBoardValue/productColumn[column]);
-        rowPrimes = Util.reduce(fullBoardValue/productRow[row]);
-        quadrantPrimes = matchNumbersQuadrant(row,column);
-        final List<Integer> sameVal = matchNumbersHelper(rowPrimes, columnPrimes, quadrantPrimes);
+        final List<Integer> commonValues = matchNumbersHelper(rowPrimes, columnPrimes, quadrantPrimes);
         if(index == -1){
             stillWorkToDo = true;
-            availableOptions[row][column] = sameVal.size();
-            if(sameVal.size() == 0){
+            availableOptions[row][column] = commonValues.size();
+            if(commonValues.size() == 0){
                 noSolution = true;
             }
-            if(sameVal.size()==1){
+            if(commonValues.size()==1){
                 availableOptions[row][column] = fullBoardValue;
                 hasUpdatedThisIteration = true;
-                board[row][column] = sameVal.get(0);
+                board[row][column] = commonValues.get(0);
             }
         }
         else{
-            board[row][column] = sameVal.get(index);
+            board[row][column] = commonValues.get(index);
         }
-
     }
 
     /**
@@ -305,7 +265,7 @@ public class SolverService {
         for(int i = 0; i < 9; i++){
             for(int j = 0; j < 9; j++){
                 if(board[i][j] == 1){
-                    updateSingle(i,j);
+                    updateSingle(i, j, -1);
                 }
             }
         }
@@ -318,6 +278,8 @@ public class SolverService {
      */
     private void compareBoard(){
         hasUpdatedThisIteration = false;
+
+//        board = Util.update2DIntArray(board, (num, indices) -> compare(indices[0], indices[1]));
         for(int i = 0; i < 9; i++){
             for(int j = 0; j < 9; j++){
                 if(board[i][j] == 1){
@@ -328,24 +290,17 @@ public class SolverService {
     }
 
     private int compare(int row, int column){
-        return compare(row,column,-1);
-    }
-
-    private int compare(int row, int column, int index){
-
         List<Integer> available = matchNumbersQuadrant(row, column);
-        available = Util.compareHelper(available, Util.reduce(fullBoardValue/productColumn[column]));
-        available = Util.compareHelper(available, Util.reduce(fullBoardValue/productRow[row]));
-        available = excluder(row,column,available);
+        available = Util.compareHelper(available, Util.primeNumberFactorize(fullBoardValue/productColumn[column]));
+        available = Util.compareHelper(available, Util.primeNumberFactorize(fullBoardValue/productRow[row]));
+//        available = excluder(available, row, column);
 
-        if(index == -1) {
-            if (available.size() == 1) {
-                hasUpdatedThisIteration = true;
-                availableOptions[row][column] = fullBoardValue;
-                return available.get(0);
-            } else return 1;
+        if (available.size() == 1) {
+            hasUpdatedThisIteration = true;
+            availableOptions[row][column] = fullBoardValue;
+            return available.get(0);
         }
-        else return available.get(index);
+        return 1;
     }
 
     /**
@@ -356,15 +311,13 @@ public class SolverService {
      * @param available
      * @return
      */
-    private List<Integer> excluder(int row, int column, List<Integer> available){
-        final int rows = Util.relevantData(row);
-        final int columns = Util.relevantData(column  );
+    private List<Integer> excluder(List<Integer> available, int row, int column){
+        final int rows = Util.findQuadrantBoardIndex(row);
+        final int columns = Util.findQuadrantBoardIndex(column);
         for(int x = rows-3; x < rows; x++){
             for(int y = columns-3; y < columns; y++){
-                if(board[x][y] == 1){
-                    if(x != row || y != column){
-                        available = Util.compareHelper(available, matcher(x,y));
-                    }
+                if(board[x][y] == 1 && !(x == row && y == column)){
+                    available = Util.compareHelper(available, matcher(x,y));
                 }
 
             }
@@ -378,55 +331,50 @@ public class SolverService {
      * @param column
      * @return Array with the unavailable inputs for nearby slots
      */
-    private ArrayList<Integer> matcher(int row, int column){
-        final ArrayList<Integer> filled = Util.reduce(productRow[row]);
-        filled.addAll(Util.reduce(productColumn[column]));
+    private List<Integer> matcher(int row, int column){
+        final List<Integer> filled = Util.primeNumberFactorize(productRow[row]);
+        filled.addAll(Util.primeNumberFactorize(productColumn[column]));
         return filled;
     }
 
 
     /**
-     * Helper method for updating the board. Matches the arraylists with available prime numbers
-     * for the row, column and quadrant relating to a slot and checks if there is only one answer
-     * this is then used to update the board.
-     * @param row
-     * @param column
-     * @param quadrant
-     * @return  the only number available for the slot which then updates the board
+     * Helper method for finding what values might be valid for a slot. Matches the arraylists with available prime numbers
+     * for the row, column and quadrant relating to a slot and checks if there is only one answer.
+     * @param row current values of the row of the slot we're testing
+     * @param column current values of the column of the slot we're testing
+     * @param quadrant current values of the quadrant of the slot we're testing
+     * @return  the numbers available for the slot which then updates the board
      */
     private List<Integer> matchNumbersHelper(List<Integer> row, List<Integer> column, List<Integer> quadrant){
-        List<Integer> sameVal;
-
-        sameVal =  Util.compareHelper(row, column);
-        sameVal = Util.compareHelper(sameVal, quadrant);
-
-        return sameVal;
+        List<Integer> sameVal =  Util.compareHelper(row, column);
+        return Util.compareHelper(sameVal, quadrant);
     }
 
 
     /**
      * Helper method to match numbers, used for readability
-     * @param i row
-     * @param j column of slot to be evaluated
-     * @return  arraylist with available prime numbers to match
+     * @param row of slot to be evaluated
+     * @param column of slot to be evaluated
+     * @return  list with available prime numbers to match
      */
-    private ArrayList<Integer> matchNumbersQuadrant(int i, int j){
-        final int quadrantX;
-        final int quadrantY;
-        if(i<3) quadrantX = 0;
-        else if(i<6)quadrantX = 1;
-        else quadrantX = 2;
-        if(j<3) quadrantY = 0;
-        else if(j<6)quadrantY = 1;
-        else quadrantY = 2;
+    private List<Integer> matchNumbersQuadrant(int row, int column){
+        final int quadrantX = findQuadrant(row);
+        final int quadrantY = findQuadrant(column);
 
-        return Util.reduce(fullBoardValue/productQuadrant[quadrantX][quadrantY]);
+        return Util.primeNumberFactorize(fullBoardValue/productQuadrant[quadrantX][quadrantY]);
+    }
+
+    private static int findQuadrant(int row) {
+        if(row <3) return 0;
+        if(row <6) return 1;
+        return 2;
     }
 
 
     /**
      * Calculates the products of the rows and columns and quadrants for
-     * every part of the board. This is so we can use the prime number finder
+     * every part of the board. This is so we can use prime number factorization
      * to evaluate which numbers are available for every slot and match.
      *
      */
@@ -439,12 +387,11 @@ public class SolverService {
             for(int j = 0; j < 9; j++){
                 productRow[i] *= board[i][j];
                 productColumn[i] *= board[j][i];
-                //System.out.println("BOARD VALUE: " + board[i][j]+ "\nAND OTHER: " + board[j][i]);
             }
         }
 
         //OBS I know this looks really messy, but I feel like 9 for loops is even messier...
-        //efficiency wise it is about as heavy as the double loop above.
+        //complexity wise it is about as heavy as the double loop above.
         for(int i = 0; i < 3; i++){
             final int addX = i*3;
             for(int j = 0; j < 3; j++){

@@ -10,8 +10,7 @@ public class SudokuController {
 
     @PostMapping("/solve")
     int[][] solveSudoku(@RequestBody SudokuRequestDto req){
-        SolverService service = new SolverService(req.matrix());
-        return service.execute();
+        return SolverService.execute(req.matrix());
     }
 
     @GetMapping("/hello")

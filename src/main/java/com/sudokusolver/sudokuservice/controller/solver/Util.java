@@ -1,5 +1,7 @@
 package com.sudokusolver.sudokuservice.controller.solver;
+
 import java.util.*;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public final class Util{
@@ -25,10 +27,19 @@ public final class Util{
      * @return - filled board
      */
     public static int[][] fillMatrix(int[][] matrix, int value){
-        for (int[] ints : matrix) {
-            Arrays.fill(ints, value);
+        return update2DIntArray(matrix, (num, indices) -> value);
+    }
+
+    public static int[][] update2DIntArray(int[][] array, BiFunction<Integer, Integer[], Integer> action) {
+        int rows = array.length;
+        int cols = array[0].length;
+        int[][] updatedArray = new int[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                updatedArray[i][j] = action.apply(array[i][j], new Integer[]{i, j});
+            }
         }
-        return matrix;
+        return updatedArray;
     }
 
     /**
@@ -39,8 +50,11 @@ public final class Util{
     public static int[] findSlotWithLeastOptions(int[][] availableOptionsMatrix){
         int minVal = availableOptionsMatrix[0][0];
         int[] indexWithLeastOptions = {0,0};
-        for(int i = 0; i < availableOptionsMatrix.length; i++){
-            for(int j = 0; j < availableOptionsMatrix[0].length; j++){
+        int columnLength = availableOptionsMatrix.length;
+        int rowLength = availableOptionsMatrix[0].length;
+
+        for(int i = 0; i < columnLength; i++){
+            for(int j = 0; j < rowLength; j++){
                 if(availableOptionsMatrix[i][j] < minVal && availableOptionsMatrix[i][j] != 1){
                     indexWithLeastOptions = new int[]{i,j};
                     minVal = availableOptionsMatrix[i][j];
@@ -62,7 +76,7 @@ public final class Util{
             case 8 -> 19;
             case 9 -> 23;
             case 0 -> 1;
-            default -> throw new RuntimeException("input not supported: " + number); //this is for the 0:s
+            default -> throw new RuntimeException("input not supported: " + number);
         };
     }
 
@@ -87,7 +101,7 @@ public final class Util{
      * @param num number to be reduced into prime factors
      * @return an array of the prime factors
      */
-    public static ArrayList<Integer> reduce(int num){
+    public static ArrayList<Integer> primeNumberFactorize(int num){
         int i = 2;
         final ArrayList<Integer> primeFactors = new ArrayList<>();
         while(i < num){
@@ -103,33 +117,29 @@ public final class Util{
         return primeFactors;
     }
 
-    public static int relevantData(int i){
+    public static int findQuadrantBoardIndex(int i){
         if(i<3)return 3;
         if(i<6)return 6;
         return 9;
     }
 
-    /**
-     * To convert the input to an integer array
-     * @return the board
-     */
-    public static int[][] stringToIntegerArray(){
-        int[][] retVal = new int[9][9];
-        try (final Scanner scan = new Scanner(System.in)) {
-            String[] line;
-            int i = 0;
-            int j;
-            while (scan.hasNextLine()) {
-                line = scan.nextLine().split(" ");
-                j = 0;
-                for (String value : line) {
-                    retVal[i][j++] = Integer.parseInt(value);
+    //UtilTest method
+    public static int[][] parseSudoku(String sudokuString) {
+        String[] rows = sudokuString.trim().split("\n");
+        int[][] sudoku = new int[9][9];
+
+        // Loop through the rows and columns to fill in the Sudoku array
+        for (int i = 0; i < 9; i++) {
+            String row = rows[i].replace(" ", "");
+            for (int j = 0; j < 9; j++) {
+                char cell = row.charAt(j);
+                if(!Character.isDigit(cell)){
+                    throw new RuntimeException(String.format("not valid input: %s", cell));
                 }
-                i++;
+                sudoku[i][j] = Character.getNumericValue(cell);
             }
-        } catch (Exception e) {
-            throw new RuntimeException("Exception while parsing sudoku!\n " + Arrays.toString(e.getStackTrace()));
         }
-        return retVal;
+
+        return sudoku;
     }
 }
