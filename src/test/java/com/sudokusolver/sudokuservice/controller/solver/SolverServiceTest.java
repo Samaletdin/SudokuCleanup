@@ -57,8 +57,8 @@ class SolverServiceTest {
                 5 2 8 9 3 4 1 6 7
                 """;
         int[][] expected = Util.parseSudoku(expectedSolution);
-
-        int[][] actual = SolverService.execute(initialMatrix);
+        SolverService solverService = new SolverService(initialMatrix);
+        int[][] actual = solverService.execute().finalMatrix();
 
         assertThat(actual).isEqualTo(expected);
     }

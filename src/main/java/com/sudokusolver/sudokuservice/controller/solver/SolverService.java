@@ -1,8 +1,9 @@
 package com.sudokusolver.sudokuservice.controller.solver;
 
+import com.sudokusolver.sudokuservice.controller.dto.SudokuResponseDto;
+
 import java.util.Arrays;
 import java.util.List;
-import java.util.Scanner;
 
 public class SolverService {
 
@@ -32,7 +33,8 @@ public class SolverService {
     private static boolean completedOnce = false;
     private boolean multipleAnswers = false;
 
-    private static final int TIMEOUT_IN_MILLIS = 10000;
+    private static final int TIMEOUT_IN_MILLIS = 2000;
+    private static long SYSTEM_TIMEOUT_TIME;
 
     private final int fullBoardValue = 2*3*5*7*11*13*17*19*23;
 
@@ -54,6 +56,10 @@ public class SolverService {
      * state machine for the SolverService
      */
     public void run(){
+        if(System.currentTimeMillis() > SYSTEM_TIMEOUT_TIME){
+            resetStaticVariables();
+            throw new RuntimeException("Something's iffy!");
+        }
         switch (currentStatus) {
             case PRIME_NUMBER_CONVERSION -> {
                 convertNumbers();
@@ -113,10 +119,10 @@ public class SolverService {
 
     /**
      * Execute method, takes a sudoku matrix as parameter and solves the sudoku.
-     * @param board 9*9 matrix with sudoku
      * @return 9*9 matrix with solved sudoku or empty if no solution available.
      */
-    public static int[][] execute(int[][] board){
+    public SudokuResponseDto execute(){
+        SYSTEM_TIMEOUT_TIME = System.currentTimeMillis() + TIMEOUT_IN_MILLIS;
         final SolverService solverService = new SolverService(copyMatrix(board));
         solverService.resetStaticVariables();
         while(solverService.running){
@@ -127,13 +133,13 @@ public class SolverService {
 
         if(solverService.multipleAnswers) {
             solverService.currentStatus = Status.MULTIPLE_ANSWERS;
-            return board;
+            return new SudokuResponseDto(board, Status.MULTIPLE_ANSWERS);
         } else if (solverService.completedOnce) {
             solverService.currentStatus = Status.COMPLETED;
             printFinalSolution();
-            return possibleSolution.clone();
+            return new SudokuResponseDto(possibleSolution.clone(), Status.COMPLETED);
         } else {
-            return board;
+            return new SudokuResponseDto(board, Status.ERROR);
         }
 
     }

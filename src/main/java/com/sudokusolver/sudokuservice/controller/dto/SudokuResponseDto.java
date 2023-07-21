@@ -1,4 +1,6 @@
 package com.sudokusolver.sudokuservice.controller.dto;
 
-public record SudokuResponseDto(int[][] finalMatrix, String status) {
+import com.sudokusolver.sudokuservice.controller.solver.SolverService;
+
+public record SudokuResponseDto(int[][] finalMatrix, SolverService.Status status) {
 }

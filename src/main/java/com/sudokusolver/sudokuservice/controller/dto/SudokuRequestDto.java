@@ -1,4 +1,4 @@
 package com.sudokusolver.sudokuservice.controller.dto;
 
-public record SudokuRequestDto(int[][] matrix) {
+public record SudokuRequestDto( int[][] matrix) {
 }
